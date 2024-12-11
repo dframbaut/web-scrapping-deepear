@@ -1,44 +1,58 @@
-import requests
-from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import time
 import pandas as pd
 
-page = requests.get('https://simi.concejodemedellin.gov.co/simi3/invitados/proyectos/acuerdos.xhtml')
-soup = BeautifulSoup(page.text, 'html.parser')
+# Configurar el navegador
+options = webdriver.ChromeOptions()
+options.add_argument('--headless')  # Modo sin interfaz gráfica
+driver = webdriver.Chrome(options=options)
 
-# Buscar la tabla
-table = soup.find("table")
-#Creacion de listas
-Nombres=[]
-Fechas=[]
-Epigrafe=[]
-Tipo=[]
-botones=[]
-tbody = table.find("tbody")
-#Recorrer y añadir celdas a cada lista
-if tbody:
-    for row_index, row in enumerate(tbody.find_all("tr"), start=1):
-        for col_index, cell in enumerate(row.find_all("td"), start=1):
-            cell_content = cell.get_text(strip=True)    
-            if col_index == 1: Nombre
-                Nombres.append(cell_content)
-            elif col_index == 2:Fecha
-                Fechas.append(cell_content)
-            elif col_index == 3:Epigrafe
-                Epigrafe.append(cell_content)
-            elif col_index == 4: Tipo
-                Tipo.append(cell_content)
-            elif col_index == 5: botones
-                botones.append(cell_content)
-#Imprimir cada una de las listas
-print(Nombres)
-print(Fechas)
-print(Epigrafe)
-print(Tipo)
-print(botones)
+# URL base
+url = "https://simi.concejodemedellin.gov.co/simi3/invitados/proyectos/acuerdos.xhtml"
+driver.get(url)
 
+# Lista para almacenar los datos
+data = []
 
+# Esperar la carga inicial
+time.sleep(3)
 
+# Procesar todas las páginas
+while True:
+    print("Procesando página...")
 
-    
+    # Encontrar la tabla y extraer filas
+    table = driver.find_element(By.TAG_NAME, 'table')
+    rows = table.find_elements(By.TAG_NAME, 'tr')
 
-    
+    # Extraer datos de todas las filas (omitiendo el encabezado)
+    for row in rows[1:]:  # Omitir el encabezado
+        cells = row.find_elements(By.TAG_NAME, 'td')
+        if len(cells) > 0:
+            data.append({
+                "No. Acuerdo": cells[0].text.strip(),
+                "No. Proyecto de Acuerdo": cells[1].text.strip(),
+                "Título": cells[2].text.strip(),
+                "Estado": cells[3].text.strip()
+            })
+
+    # Intentar ir a la siguiente página
+    try:
+        next_button = driver.find_element(By.CSS_SELECTOR, '.ui-paginator-next')  # Selector del botón "Siguiente"
+        if 'ui-state-disabled' in next_button.get_attribute('class'):  # Verificar si el botón está deshabilitado
+            print("Última página alcanzada.")
+            break
+        next_button.click()
+        time.sleep(3)  # Esperar carga
+    except Exception as e:
+        print("Error al intentar pasar a la siguiente página:", e)
+        break
+
+# Convertir los datos a DataFrame
+df = pd.DataFrame(data)
+# Guardar los datos en un archivo CSV
+df.to_csv("datos_acuerdos_completos.csv", index=False)
+
+# Cerrar el navegador
+driver.quit()
