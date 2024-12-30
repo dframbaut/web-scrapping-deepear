@@ -24,30 +24,155 @@ def get_secret():
     except Exception as e:
         print(f"Error al obtener los secretos: {str(e)}")
         raise e
+def scrapping (base_url):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
+    }
+
+    # Crear listas para almacenar los datos
+    Nombres = []
+    Epigrafes = []
+    Fecha_publicacion = []
+    Fecha_vigor = []
+    Link = []
+    Link2=[]
+    Tipos=[]
+    Entidades=[]
 
 
-def scrape_pdfs(base_url, start_year, end_year):
-    all_data = []
-    for year in range(start_year, end_year + 1):
-        url = f"{base_url}/acuerdos-{year}/"
-        response = requests.get(url)
-        if response.status_code != 200:
-            continue
-        soup = BeautifulSoup(response.content, 'html.parser')
-        pdf_sections = soup.find_all('p')
-        for pdf_section in pdf_sections:
-            link_tag = pdf_section.find('a', href=True)
-            if link_tag:
-                pdf_link = link_tag['href']
-                text = pdf_section.get_text(strip=True)
-                titulo, epigrafe = (text.split('¨') + [""])[:2] if '¨' in text else (text, "")
-                all_data.append({
-                    'year': year,
-                    'pdf_link': pdf_link,
-                    'titulo': titulo.strip(),
-                    'epigrafe': epigrafe.strip()
-                })
-    return all_data
+
+    # Realizar la solicitud HTTP a la página base con las cabeceras
+    response = requests.get(base_url, headers=headers)
+
+    # Número de páginas
+    num_paginas = 102
+
+    # Iterar por cada página
+    for pagina in range(1, num_paginas + 1):
+        # Construir la URL para cada página
+        url = f"{base_url}?pagina={pagina}"
+        response = requests.get(url, headers=headers)
+
+        # Comprobar si la solicitud fue exitosa
+        if response.status_code == 200:
+            # Parsear el contenido HTML de la página
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Buscar todas las tablas con la clase 'tabla'
+            tables = soup.find_all('table', class_='tabla')
+
+            if tables:
+                # Recorrer todas las tablas encontradas
+                for table_index, tabla4 in enumerate(tables, start=1):
+                    # Buscar todas las filas del cuerpo de la tabla
+                    rows = tabla4.find_all('tr')
+                    
+                    # Recorrer todas las filas de cada tabla
+                    for row_index, row in enumerate(rows, start=1):
+                        # Buscar todas las celdas de la fila
+                        cells = row.find_all('td')
+                        
+                        if cells:  # Verificar que haya celdas en la fila
+                            # Tomar la última celda
+                            last_cell = cells[-1]
+                            
+                            # Buscar el enlace dentro de la última celda
+                            link_tag = last_cell.find('a')
+                            
+                            if link_tag and link_tag.get('href'):  # Verificar si el <a> tiene un atributo href
+                                relative_link = link_tag['href']
+                                full_link = urljoin(base_url, relative_link)  # Combina el URL base con el enlace relativo
+                                Link.append(full_link)
+                                print(f"Tabla {table_index}, Fila {row_index}: Enlace encontrado -> {full_link}")
+                            else:
+                                print(f"Tabla {table_index}, Fila {row_index}: No se encontró enlace en la última celda.")
+                
+                # Imprimir todos los enlaces extraídos de las tablas
+                print("\nEnlaces extraídos de todas las tablas:")
+                print(Link)
+                
+                # Navegar y hacer scraping en cada uno de los enlaces extraídos
+                for link in Link:
+                    print(f"\nNavegando al enlace: {link}")
+                    
+                    # Hacer una solicitud HTTP a la página del enlace
+                    response_link = requests.get(link, headers=headers)
+                    if response_link.status_code == 200:
+                        # Parsear el contenido HTML de la página enlazada
+                        soup_link = BeautifulSoup(response_link.text, 'html.parser')
+                        
+                        # Verificar si se encontró una tabla en la página enlazada
+                        tables_link = soup_link.find_all('table')
+
+                        #escoger tabla en la pagina
+                        if len(tables_link) >= 4: 
+                            table4 = tables_link[3]
+
+                            # Buscar todas las filas del cuerpo de la tabla
+                            rows = table4.find_all('tr')
+                                  
+                            # Recorrer todas las filas de cada tabla
+                            for row_index, row in enumerate(rows, start=1):
+                                entidad="Alcaldia de Cali"
+                                Entidades.append(entidad)
+                                # Buscar todas las celdas de la fila
+                                cells = row.find_all('td')
+                                
+                                if cells:  # Verificar que haya celdas en la fila
+                                    # Extraer información de cada celda
+                                    if len(cells) >= 1:  # Asegurarse de que haya al menos 1 celda
+                                        dato1 = cells[0].get_text(strip=True)
+                                        # Procesar dato1 para tipo
+                                        Tipos.append(dato1)
+                                        print(f"Tipo: {dato1}")
+                                    
+                                    if len(cells) >= 2:  # Asegurarse de que haya al menos 2 celdas
+                                        dato2 = cells[1].get_text(strip=True)
+                                        # Procesar dato2 para nombre
+                                        Nombres.append(dato2)
+                                        print(f"Nombre: {dato2}")
+                                    
+                                    if len(cells) >= 3:  # Asegurarse de que haya al menos 3 celdas
+                                        dato3 = cells[2].get_text(strip=True)
+                                        # Procesar dato3 para fecha de publicacion y fecha de vigor
+                                        Fecha_publicacion.append(dato3)
+                                        Fecha_vigor.append(dato3)
+                                        print(f"Fecha: {dato3}")
+                                    
+                                    if len(cells) >= 4:  # Asegurarse de que haya al menos 4 celdas
+                                        dato4 = cells[3].get_text(strip=True)
+                                        # Procesar dato4 para epígrafe
+                                        Epigrafes.append(dato4)
+                                        print(f"Epigrafe: {dato4}")
+                                    
+                                    if len(cells) >= 8:  # Asegurarse de que haya al menos 8 celdas
+                                        dato5 = cells[7]
+                                        a_tag2 = dato5.find('a', onmouseup=True)      
+                                        if a_tag2:
+                                            # Obtener el valor del atributo 'onmouseup'
+                                            onmouseup_value = a_tag2['onmouseup']
+                                            
+                                            # Extraer el enlace con una expresión regular
+                                            match = re.search(r"MM_openBrWindow\('([^']+)'", onmouseup_value)
+                                            if match:
+                                                link = match.group(1)
+                                                #Extraer solo el url 
+                                                if 'https://' in link:
+                                                  start = link.find('https://')
+                                                  end = link.find("'", start)  # Buscar el cierre de la URL
+                                                  dato5= link[start:end]
+                                                  # Procesar dato5 como el link del documento
+                                                  Link2.append(dato5)
+                                                  print(f"Link: {dato5}")
+                                    print("-" * 30)
+                            
+                        else:
+                            print(f"Error al acceder al enlace: {link}, Código de estado: {response_link.status_code}")
+            
+                else:
+                    print(f"Error al acceder a la página base. Código de estado: {response.status_code}")
+
+    return Nombres, Epigrafes, Fecha_publicacion, Fecha_vigor, Link2, Tipos, Entidades
 
 
 # Create database connection using environment variables
@@ -213,10 +338,8 @@ def lambda_handler(event, context):
     url_supabase = secretos['supabase_url']
     key = secretos['supabase_key']
     supabase = create_client(url_supabase, key)
-    base_url = "https://www.concejodebarranquilla.gov.co"
-    start_year = 2008
-    end_year = 2024
-    data = scrape_pdfs(base_url, start_year, end_year)
+    base_url = "https://www.cali.gov.co/aplicaciones/boletin_publico/"
+    data = scrapping(base_url)
     if data:
         response = insert_new_records(df=data)
         print(f"Datos insertados en Supabase: {response}")
