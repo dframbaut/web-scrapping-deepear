@@ -181,5 +181,5 @@ def insert_new_records(df):
  
 if __name__ == "__main__":
         # Example usage
-        df = pd.read_csv('data/leyes RD.csv')
+        df = pd.read_csv('data/Local_memorias.csv')
         insert_new_records(df)
