@@ -1,8 +1,8 @@
 version = 0.1
 [default.deploy.parameters]
-stack_name = "ConsejoBarrqApp"
+stack_name = "Alcaldia_BucaramangaApp"
 resolve_s3 = true
-s3_prefix = "ConsejoBarrqApp"
+s3_prefix = "Alcaldia_BucaramangaApp"
 region = "us-east-1"
 confirm_changeset = true
 image_repositories = []
