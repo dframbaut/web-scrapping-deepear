@@ -1,0 +1,11 @@
+requests
+pandas
+beautifulsoup4
+boto3
+html5lib
+supabase
+pdfplumber
+openai
+docx
+unidecode
+python-docx
