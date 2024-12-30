@@ -1,8 +1,8 @@
 version = 0.1
 [default.deploy.parameters]
-stack_name = "ConsejoBarrqApp"
+stack_name = "Concejo_CaliApp"
 resolve_s3 = true
-s3_prefix = "ConsejoBarrqApp"
+s3_prefix = "Concejo_CaliApp"
 region = "us-east-1"
 confirm_changeset = true
 image_repositories = []
