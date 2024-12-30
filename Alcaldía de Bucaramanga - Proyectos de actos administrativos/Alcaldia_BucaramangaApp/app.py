@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 import os
 import psycopg2
 import pandas as pd
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+import time
 
 # Load environment variables from .env file
 load_dotenv()
