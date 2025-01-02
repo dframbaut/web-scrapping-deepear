@@ -165,7 +165,6 @@ def scrapping_ids(url):
     df = df[columnas_ordenadas]
     df.to_csv("planificacion_y_desarrollo.csv", index=False, encoding='utf-8-sig')
     print("Archivo CSV generado exitosamente.")
-    files.download("planificacion_y_desarrollo.csv")
 
 # Create database connection using environment variables
 conection = psycopg2.connect(
