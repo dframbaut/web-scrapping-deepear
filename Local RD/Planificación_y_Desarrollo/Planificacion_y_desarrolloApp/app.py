@@ -82,12 +82,12 @@ def scrapping_ids(url):
             parametros["id"] = id_val
             ids_extraidos = extraer_term_taxonomy_id(base_url, parametros, processed_ids)
             nuevos_ids.extend(ids_extraidos)
-        
+
         nuevos_ids = list(set(nuevos_ids) - processed_ids)  # Eliminar duplicados ya procesados
         if not nuevos_ids:
             print("No se encontraron nuevos IDs. Finalizando.")
             break
-        
+
         idcat_values2.append(nuevos_ids)
         processed_ids.update(nuevos_ids)
         ids_list = nuevos_ids
@@ -152,6 +152,54 @@ def scrapping_ids(url):
 
     resultados = fetch_files_by_id(api_url, final_idcat_values, base_params)
 
+        # Diccionario con frases y sus valores correspondientes
+    tabla_dict = {
+    'guia normativa': 2,
+    'agenda regulatoria sectorial': 1,
+    'consulta publica': 11,
+    'regulacion local': 13,
+    'beneficios tributarios ambientales': 12,
+    'buenas practicas sociales': 14,
+    'buenas practicas ambientales': 15,
+    'buenas practicas de gobierno corporativo': 16,
+    'territorial': 17,
+    'acto administrativo': 18,
+    'decreto': 19,
+    'resolucion': 20,
+    'circular': 21,
+    'documento normativo': 22,
+    'ley': 23,
+    'reglamento': 24,
+    'constitucion': 25,
+    'municipal': 26,
+    'memorias': 27,
+    'memoria': 27,
+    'estrategico': 28,
+    'actas': 29,
+    'acta': 29,
+    'presupuesto participativo': 30,
+    'ordenanzas': 31,
+    'ejecucion de obras': 32,
+    'licitaciones publicas': 33
+    }
+
+    def asignar_rtype_id(titulo, tabla_dict):
+      titulo = titulo.lower()  # Convertir el título a minúsculas
+      if 'listado' in titulo or 'guia' in titulo or 'operativo' in titulo:
+        return tabla_dict['regulacion local']
+      elif 'informe' in titulo:
+          return tabla_dict['municipal']
+      elif 'asamblea' in titulo:
+          return tabla_dict['acta']
+      elif 'constructora' in titulo:
+          return tabla_dict['licitaciones publicas']
+      else:
+          for frase, numero in tabla_dict.items():
+              patron = r'\b' + re.escape(frase) + r'\b'
+              if re.search(patron, titulo):
+                  return numero
+      return None
+
     # Generar DataFrame y CSV
     data = {
         "title": nombres,
@@ -164,7 +212,7 @@ def scrapping_ids(url):
     df['Tipo'] = None
     df['entity'] = 'Alcaldia del distrito Nacional'
     df['classification_id'] = '17'
-    df['rtype_id'] = None
+    df['rtype_id'] =df['title'].apply(lambda x: asignar_rtype_id(x, tabla_dict))
     df['gtype'] = 'link'
     df['is_active'] = True
     columnas_ordenadas = ['title', 'summary', 'update_at', 'external_link', 'entity', 'created_at', 'classification_id', 'rtype_id', 'gtype', 'is_active']
