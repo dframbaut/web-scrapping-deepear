@@ -7,8 +7,10 @@ import time  # Add import for time module
  
 # Load environment variables from .env file
 DB_NAME = "dapper-prod"
-DB_USER = "users_167483546"
-DB_PASSWORD = "GT];t[Yy2zNSdv/Pm4cqZ"
+# DB_USER = "users_167483546"
+# DB_PASSWORD = "GT];t[Yy2zNSdv/Pm4cqZ"
+DB_USER = "postgres"
+DB_PASSWORD = "SvBuP7PQaxZ9Psp7PdVh"
 DB_HOST = "dapper-test-repdom.cz0ywq2gy6rm.us-east-1.rds.amazonaws.com"
 DB_PORT = 5432
  
@@ -107,6 +109,24 @@ def insert_regulations_component(new_ids):
        
     except Exception as e:
         return 0, f"Error inserting regulation components: {str(e)}"
+
+def insert_regulations_cities(new_ids):
+    try:
+        if not new_ids:
+            return 0, "No new regulation IDs provided for component insertion."
+ 
+        # Prepare components data
+        id_rows = pd.DataFrame(new_ids, columns=['regulations_id'])
+        id_rows['city_id'] = 3378
+       
+        # Insert components
+        components_table_name = 'dapper_regulations_regulations_cities'
+        inserted_count = standard_insert(id_rows, components_table_name)
+       
+        return inserted_count, f"Successfully inserted {inserted_count} regulation components"
+       
+    except Exception as e:
+        return 0, f"Error inserting regulation components: {str(e)}"
  
 def insert_new_records(df):
     """
@@ -167,7 +187,8 @@ def insert_new_records(df):
         print(f"IDs de nuevos registros: {new_ids}")
  
         # Insertar componentes relacionados
-        component_count, component_message = insert_regulations_component(new_ids)
+        _, component_message = insert_regulations_component(new_ids)
+        _, component_message = insert_regulations_cities(new_ids)
         print(component_message)
  
         message = f"Inserted {inserted_count} new records. {component_message}"
@@ -181,5 +202,5 @@ def insert_new_records(df):
  
 if __name__ == "__main__":
         # Example usage
-        df = pd.read_csv('data/Local_memorias.csv')
+        df = pd.read_csv('data/test.csv')
         insert_new_records(df)
