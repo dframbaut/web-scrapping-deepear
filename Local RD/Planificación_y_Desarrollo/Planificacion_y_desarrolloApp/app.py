@@ -27,14 +27,6 @@ def get_secret():
     except Exception as e:
         print(f"Error al obtener los secretos: {str(e)}")
         raise e
-import requests
-from bs4 import BeautifulSoup
-import re
-import json
-import pandas as pd
-import unicodedata
-from google.colab import files
-
 def scrapping_ids(url):
     """
     Función principal que realiza todo el flujo de scrapping:
@@ -171,80 +163,13 @@ def scrapping_ids(url):
     df = pd.DataFrame(data)
     df['Tipo'] = None
     df['entity'] = 'Alcaldia del distrito Nacional'
-    df['classification_id'] = None
-    df['rtype_id'] = '13'
+    df['classification_id'] = '17'
+    df['rtype_id'] = None
     df['gtype'] = 'link'
     df['is_active'] = True
     columnas_ordenadas = ['title', 'summary', 'update_at', 'external_link', 'entity', 'created_at', 'classification_id', 'rtype_id', 'gtype', 'is_active']
     df = df[columnas_ordenadas]
-    df.to_csv("planificacion_y_desarrollo.csv", index=False, encoding='utf-8-sig')
-    print("Archivo CSV generado exitosamente.")
-    files.download("planificacion_y_desarrollo.csv")
-
-    # Scraping de archivos por IDs secundarios
-    api_url = "https://adn.gob.do/transparencia/wp-admin/admin-ajax.php"
-    nombres, link, fecha_pub, fecha_vigor, epigrafe = [], [], [], [], []
-
-    def normalize_text(text):
-        text = unicodedata.normalize('NFD', text)
-        return ''.join(c for c in text if unicodedata.category(c) != 'Mn').lower()
-
-    def fetch_files_by_id(api_url, ids, base_params):
-        all_results = []
-        for current_id in ids:
-            print(f"Procesando ID: {current_id}...")
-            params = base_params.copy()
-            params["id"] = current_id
-            params["rootcat"] = current_id
-            page = 1
-            while True:
-                params["page"] = page
-                response = requests.get(api_url, params=params, verify=False)
-                if response.status_code == 200:
-                    data = response.json()
-                    archivos = data.get("files", [])
-                    if not archivos:
-                        break
-                    for archivo in archivos:
-                        post_title = archivo.get("post_title", "Sin título")
-                        normalized_title = normalize_text(post_title)
-                        nombres.append(normalized_title)
-                        epigrafe.append(normalized_title)
-                        fecha_pub.append(archivo.get("created_time", "Sin fecha"))
-                        fecha_vigor.append(archivo.get("modified_time", "Sin fecha"))
-                        link.append(archivo.get("linkdownload", "Sin enlace"))
-                        all_results.append({
-                            "post_title": normalized_title,
-                            "created_time": archivo.get("created_time", "Sin fecha"),
-                            "modified_time": archivo.get("modified_time", "Sin fecha"),
-                            "linkdownload": archivo.get("linkdownload", "Sin enlace")
-                        })
-                    page += 1
-                else:
-                    break
-        return all_results
-
-    resultados = fetch_files_by_id(api_url, final_idcat_values, base_params)
-
-    # Generar DataFrame y CSV
-    data = {
-        "title": nombres,
-        "external_link": link,
-        "created_at": fecha_pub,
-        "update_at": fecha_vigor,
-        "summary": epigrafe
-    }
-    df = pd.DataFrame(data)
-    df['Tipo'] = None
-    df['entity'] = 'Alcaldia del distrito Nacional'
-    df['classification_id'] = None
-    df['rtype_id'] = '13'
-    df['gtype'] = 'link'
-    df['is_active'] = True
-    columnas_ordenadas = ['title', 'summary', 'update_at', 'external_link', 'entity', 'created_at', 'classification_id', 'rtype_id', 'gtype', 'is_active']
-    df = df[columnas_ordenadas]
-    df.to_csv("planificacion_y_desarrollo.csv", index=False, encoding='utf-8-sig')
-    print("Archivo CSV generado exitosamente.")
+    return df
     
 
 # Create database connection using environment variables
