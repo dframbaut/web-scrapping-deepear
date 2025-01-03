@@ -54,9 +54,9 @@ def scrapping_ids(url):
     ids_list = [tag.get('data-idcat') for tag in a_tags]
     print("IDCAT encontrados:", ids_list)
 
-    # Parámetros base para solicitudes
+        # Parámetros base para solicitudes
     base_url = "https://adn.gob.do/transparencia/wp-admin/admin-ajax.php"
-    base_params = {
+    base_param1 = {
         "juwpfisadmin": "false",
         "action": "wpfd",
         "task": "categories.display",
@@ -65,41 +65,121 @@ def scrapping_ids(url):
     }
 
     # Función auxiliar para extraer term_taxonomy_id
-    def extraer_term_taxonomy_id(base_url, params, exclude_ids):
+    def extraer_term_taxonomy_id(base_url, parametros, exclude_ids):
         try:
-            response = requests.get(base_url, params=params, headers=headers, verify=False)
+            response = requests.get(base_url, params=parametros, headers=headers, verify=False)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             page_text = soup.get_text()
             term_taxonomy_ids = re.findall(r'"term_taxonomy_id":(\d+)', page_text)
             return [id_val for id_val in term_taxonomy_ids if id_val not in exclude_ids]
         except Exception as e:
-            print(f"Error al procesar ID {params['id']}: {e}")
+            print(f"Error al procesar ID {parametros['id']}: {e}")
             return []
 
     # Iteración para obtener IDs secundarios
     processed_ids = set(ids_list)
     idcat_values2 = []
     iteration_count = 1
+
     while True:
         print(f"\nIteración {iteration_count}")
         nuevos_ids = []
         for id_val in ids_list:
-            params = base_params.copy()
-            params["id"] = id_val
-            ids_extraidos = extraer_term_taxonomy_id(base_url, params, processed_ids)
+            parametros = base_param1.copy()  # Crear una copia de los parámetros base
+            parametros["id"] = id_val
+            ids_extraidos = extraer_term_taxonomy_id(base_url, parametros, processed_ids)
             nuevos_ids.extend(ids_extraidos)
-        nuevos_ids = list(set(nuevos_ids) - processed_ids)
+        
+        nuevos_ids = list(set(nuevos_ids) - processed_ids)  # Eliminar duplicados ya procesados
         if not nuevos_ids:
             print("No se encontraron nuevos IDs. Finalizando.")
             break
+        
         idcat_values2.append(nuevos_ids)
         processed_ids.update(nuevos_ids)
         ids_list = nuevos_ids
         iteration_count += 1
+
     final_idcat_values = list(set([item for sublist in idcat_values2 for item in sublist] + list(processed_ids)))
     print("\nResultados finales:")
     print(f"Lista combinada de IDCAT: {final_idcat_values}")
+
+
+    # Scraping de archivos por IDs secundarios
+    api_url = "https://adn.gob.do/transparencia/wp-admin/admin-ajax.php"
+    base_params = {
+    "juwpfisadmin": "false",
+    "action": "wpfd",
+    "task": "files.display",
+    "view": "files",
+    "page": 1,
+    "orderCol": "title",
+    "orderDir": "desc"
+    }
+    nombres, link, fecha_pub, fecha_vigor, epigrafe = [], [], [], [], []
+
+    def normalize_text(text):
+        text = unicodedata.normalize('NFD', text)
+        return ''.join(c for c in text if unicodedata.category(c) != 'Mn').lower()
+
+    def fetch_files_by_id(api_url, ids, base_params):
+        all_results = []
+        for current_id in ids:
+            print(f"Procesando ID: {current_id}...")
+            params = base_params.copy()
+            params["id"] = current_id
+            params["rootcat"] = current_id
+            page = 1
+            while True:
+                params["page"] = page
+                response = requests.get(api_url, params=params, verify=False)
+                if response.status_code == 200:
+                    data = response.json()
+                    archivos = data.get("files", [])
+                    if not archivos:
+                        break
+                    for archivo in archivos:
+                        post_title = archivo.get("post_title", "Sin título")
+                        normalized_title = normalize_text(post_title)
+                        nombres.append(normalized_title)
+                        epigrafe.append(normalized_title)
+                        fecha_pub.append(archivo.get("created_time", "Sin fecha"))
+                        fecha_vigor.append(archivo.get("modified_time", "Sin fecha"))
+                        link.append(archivo.get("linkdownload", "Sin enlace"))
+                        all_results.append({
+                            "post_title": normalized_title,
+                            "created_time": archivo.get("created_time", "Sin fecha"),
+                            "modified_time": archivo.get("modified_time", "Sin fecha"),
+                            "linkdownload": archivo.get("linkdownload", "Sin enlace")
+                        })
+                    page += 1
+                else:
+                    break
+        return all_results
+
+    resultados = fetch_files_by_id(api_url, final_idcat_values, base_params)
+
+    # Generar DataFrame y CSV
+    data = {
+        "title": nombres,
+        "external_link": link,
+        "created_at": fecha_pub,
+        "update_at": fecha_vigor,
+        "summary": epigrafe
+    }
+    df = pd.DataFrame(data)
+    df['Tipo'] = None
+    df['entity'] = 'Alcaldia del distrito Nacional'
+    df['classification_id'] = None
+    df['rtype_id'] = '13'
+    df['gtype'] = 'link'
+    df['is_active'] = True
+    columnas_ordenadas = ['title', 'summary', 'update_at', 'external_link', 'entity', 'created_at', 'classification_id', 'rtype_id', 'gtype', 'is_active']
+    df = df[columnas_ordenadas]
+    df.to_csv("planificacion_y_desarrollo.csv", index=False, encoding='utf-8-sig')
+    print("Archivo CSV generado exitosamente.")
+    files.download("planificacion_y_desarrollo.csv")
 
     # Scraping de archivos por IDs secundarios
     api_url = "https://adn.gob.do/transparencia/wp-admin/admin-ajax.php"
@@ -165,6 +245,7 @@ def scrapping_ids(url):
     df = df[columnas_ordenadas]
     df.to_csv("planificacion_y_desarrollo.csv", index=False, encoding='utf-8-sig')
     print("Archivo CSV generado exitosamente.")
+    
 
 # Create database connection using environment variables
 conection = psycopg2.connect(
@@ -332,6 +413,6 @@ def lambda_handler(event, context):
     url = "https://adn.gob.do/transparencia/planificacion-y-desarrollo/'"
     data = scrapping_ids(url)
     if data:
-        response = insert_new_records(df=data)
+        response = insert_new_records(df=df)
         print(f"Datos insertados en Supabase: {response}")
     return {"statusCode": 200, "body": json.dumps("Scraping completado y datos cargados")}
